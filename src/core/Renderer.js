@@ -6,12 +6,15 @@ export class Renderer {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.resize();
+
+        // 监听窗口大小变化
+        window.addEventListener('resize', () => this.resize());
     }
 
-    // 调整画布尺寸
+    // 调整画布尺寸为窗口大小
     resize() {
-        this.canvas.width = CONFIG.CANVAS_WIDTH;
-        this.canvas.height = CONFIG.CANVAS_HEIGHT;
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
     }
 
     // 清空画布（黑色背景）

@@ -81,13 +81,27 @@ export class WaveSystem {
 
     // 更新生成逻辑
     update(deltaTime) {
-        if (!this.waveInProgress || this.enemiesToSpawn.length === 0) {
+        // 如果没有敌人需要生成，检查是否波次完成
+        if (this.enemiesToSpawn.length === 0) {
+            // 所有敌人都已生成，等待当前敌人被消灭
+            if (this.waveInProgress && this.game.state.enemies.length === 0) {
+                this.waveInProgress = false;
+                return 'waveComplete';
+            }
+            return null;
+        }
+
+        if (!this.waveInProgress) {
             return null;
         }
 
         this.spawnTimer += deltaTime;
 
-        if (this.spawnTimer >= 1000) { // 每秒生成一个
+        // 根据配置的间隔生成敌人
+        const config = this.getWaveConfig(this.currentWave);
+        const interval = Math.max(config.spawnInterval, 800); // 最小800ms间隔
+
+        if (this.spawnTimer >= interval) {
             const enemyData = this.enemiesToSpawn.shift();
             const enemy = new Enemy(
                 enemyData.type,
@@ -96,13 +110,6 @@ export class WaveSystem {
                 enemyData.hpMultiplier
             );
             this.spawnTimer = 0;
-
-            // 检查是否波次结束
-            if (this.enemiesToSpawn.length === 0 && this.game.state.enemies.length === 0) {
-                this.waveInProgress = false;
-                return 'waveComplete';
-            }
-
             return enemy;
         }
 

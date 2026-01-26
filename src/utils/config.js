@@ -6,8 +6,11 @@ export const CONFIG = {
 
     // 游戏平衡参数
     INITIAL_LIVES: 10,
-    INITIAL_GOLD: 100,
+    INITIAL_GOLD: 200, // 增加初始金币
     INITIAL_LEVEL: 1,
+
+    // 游戏节奏配置
+    PREPARATION_TIME: 8000, // 发育时间（毫秒）- 第一波敌人出现前的等待时间
 
     // 防御塔配置
     TOWERS: {
@@ -47,7 +50,7 @@ export const CONFIG = {
             hp: 30,
             speed: 1,
             damage: 1,
-            reward: 10,
+            reward: 20, // 增加金币奖励
             color: '#ff4444',
             size: 15
         },
@@ -56,7 +59,7 @@ export const CONFIG = {
             hp: 100,
             speed: 0.5,
             damage: 5,
-            reward: 30,
+            reward: 60, // 增加金币奖励
             color: '#ff8800',
             size: 25
         }

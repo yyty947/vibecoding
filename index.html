@@ -29,6 +29,7 @@
         </div>
         <div class="hud-center">
             <span id="mode-display"></span>
+            <span id="countdown" class="countdown hidden">敌军来袭: <span id="countdown-time">8</span>秒</span>
         </div>
         <div class="hud-right">
             <span class="hud-item">击杀: <span id="kills">0</span></span>
@@ -69,7 +70,8 @@
 
     <!-- 结算界面 -->
     <div id="gameover" class="gameover hidden">
-        <h2>游戏结束</h2>
+        <h2 id="gameover-title">游戏结束</h2>
+        <p id="gameover-reason" class="gameover-reason"></p>
         <div class="stats">
             <div class="stat-item">
                 <span class="stat-label">最终等级</span>

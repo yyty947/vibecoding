@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏诊断</title>
+    <style>
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: monospace;
+            padding: 20px;
+        }
+        .info {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        button {
+            background: #4a9eff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        #console-output {
+            background: #111;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>游戏诊断工具</h1>
+
+    <div class="info">
+        <h3>DOM 状态检查</h3>
+        <div id="dom-check"></div>
+    </div>
+
+    <div class="info">
+        <h3>游戏实例检查</h3>
+        <div id="game-check"></div>
+    </div>
+
+    <div class="info">
+        <h3>手动测试按钮</h3>
+        <button id="btn-test-classic">测试经典模式</button>
+        <button id="btn-test-endless">测试无尽模式</button>
+        <div id="test-result"></div>
+    </div>
+
+    <div class="info">
+        <h3>控制台输出</h3>
+        <div id="console-output"></div>
+    </div>
+
+    <script type="module">
+        // 拦截 console.log
+        const consoleOutput = document.getElementById('console-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function addLog(type, ...args) {
+            const line = document.createElement('div');
+            line.className = type;
+            line.textContent = `[${type}] ${args.join(' ')}`;
+            consoleOutput.appendChild(line);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = (...args) => {
+            originalLog(...args);
+            addLog('log', ...args);
+        };
+        console.error = (...args) => {
+            originalError(...args);
+            addLog('error', ...args);
+        };
+        console.warn = (...args) => {
+            originalWarn(...args);
+            addLog('warn', ...args);
+        };
+
+        // 检查 DOM 元素
+        function checkDOM() {
+            const results = [];
+
+            const btnClassic = document.getElementById('btn-classic');
+            const btnEndless = document.getElementById('btn-endless');
+            const canvas = document.getElementById('gameCanvas');
+            const menu = document.getElementById('menu');
+
+            results.push(`btn-classic: ${btnClassic ? '✓' : '✗'}`);
+            results.push(`btn-endless: ${btnEndless ? '✓' : '✗'}`);
+            results.push(`gameCanvas: ${canvas ? '✓' : '✗'}`);
+            results.push(`menu: ${menu ? '✓' : '✗'}`);
+
+            if (btnClassic) {
+                results.push(`btn-classic text: "${btnClassic.textContent}"`);
+            }
+            if (btnEndless) {
+                results.push(`btn-endless text: "${btnEndless.textContent}"`);
+            }
+
+            document.getElementById('dom-check').innerHTML =
+                results.map(r => `<div>${r}</div>`).join('');
+        }
+
+        // 检查游戏实例
+        function checkGame() {
+            setTimeout(() => {
+                const results = [];
+
+                results.push(`window.game: ${window.game ? '✓' : '✗'}`);
+
+                if (window.game) {
+                    results.push(`game.state: ${window.game.state ? '✓' : '✗'}`);
+                    results.push(`game.state.phase: "${window.game.state?.phase}"`);
+                    results.push(`game.input: ${window.game.input ? '✓' : '✗'}`);
+                    results.push(`game.start: ${typeof window.game.start}`);
+                }
+
+                document.getElementById('game-check').innerHTML =
+                    results.map(r => `<div>${r}</div>`).join('');
+            }, 2000); // 等待游戏初始化
+        }
+
+        // 手动测试按钮
+        document.getElementById('btn-test-classic').addEventListener('click', () => {
+            const result = document.getElementById('test-result');
+            try {
+                if (window.game && typeof window.game.start === 'function') {
+                    window.game.start('classic');
+                    result.innerHTML = '<div class="success">✓ 经典模式启动成功</div>';
+                } else {
+                    result.innerHTML = '<div class="error">✗ window.game.start 不存在</div>';
+                }
+            } catch (e) {
+                result.innerHTML = `<div class="error">✗ 错误: ${e.message}</div>`;
+            }
+        });
+
+        document.getElementById('btn-test-endless').addEventListener('click', () => {
+            const result = document.getElementById('test-result');
+            try {
+                if (window.game && typeof window.game.start === 'function') {
+                    window.game.start('endless');
+                    result.innerHTML = '<div class="success">✓ 无尽模式启动成功</div>';
+                } else {
+                    result.innerHTML = '<div class="error">✗ window.game.start 不存在</div>';
+                }
+            } catch (e) {
+                result.innerHTML = `<div class="error">✗ 错误: ${e.message}</div>`;
+            }
+        });
+
+        // 运行检查
+        checkDOM();
+        checkGame();
+
+        // 动态加载游戏
+        import('./src/main.js').then(() => {
+            console.log('游戏模块加载完成');
+            setTimeout(() => checkGame(), 500);
+        }).catch(err => {
+            console.error('游戏模块加载失败:', err);
+        });
+    </script>
+</body>
+</html>

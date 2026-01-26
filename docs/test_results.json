@@ -1,0 +1,35 @@
+{
+  "timestamp": "2026-01-26T15:55:23.606911",
+  "tests": [
+    {
+      "name": "Page Load",
+      "status": "PASS",
+      "detail": "Canvas and menu displayed"
+    },
+    {
+      "name": "Mode Selection",
+      "status": "FAIL",
+      "detail": "Page.click: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"text=开始游戏\")\n"
+    },
+    {
+      "name": "Start Classic Mode",
+      "status": "PASS",
+      "detail": "Game started"
+    },
+    {
+      "name": "Place Tower",
+      "status": "FAIL",
+      "detail": "Page.click: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\".tower-type[data-type='BASIC']\")\n"
+    },
+    {
+      "name": "Enemy Movement",
+      "status": "PARTIAL",
+      "detail": "Enemies: 0"
+    },
+    {
+      "name": "Console Check",
+      "status": "WARN",
+      "detail": "2 errors found"
+    }
+  ]
+}

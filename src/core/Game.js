@@ -65,6 +65,10 @@ export class Game {
         this.waveSystem = new WaveSystem(this);
         this.waveTimer = 0;
 
+        // 记录游戏开始时间，用于倒计时
+        this.gameStartTime = performance.now();
+        this.preparationActive = true;
+
         // 更新UI
         document.getElementById('menu').classList.add('hidden');
         document.getElementById('gameover').classList.add('hidden');
@@ -72,10 +76,13 @@ export class Game {
         document.getElementById('tower-panel').classList.remove('hidden');
         document.getElementById('mode-display').textContent = mode === 'classic' ? '经典模式' : '无尽模式';
 
+        // 显示倒计时
+        document.getElementById('countdown').classList.remove('hidden');
+
         this.updateHUD();
 
-        // 开始第一波
-        setTimeout(() => this.startNextWave(), 1000);
+        // 发育时间 - 玩家有时间布置防御塔
+        setTimeout(() => this.startNextWave(), CONFIG.PREPARATION_TIME);
 
         // 开始游戏循环
         this.lastTime = performance.now();
@@ -88,6 +95,12 @@ export class Game {
 
         this.state.wave++;
         this.waveSystem.startWave(this.state.wave);
+        this.preparationActive = false; // 发育时间结束
+
+        // 隐藏倒计时
+        const countdown = document.getElementById('countdown');
+        if (countdown) countdown.classList.add('hidden');
+
         this.updateHUD();
     }
 
@@ -101,6 +114,9 @@ export class Game {
 
         this.update(deltaTime);
         this.render();
+
+        // 更新倒计时显示
+        this.updateCountdown();
 
         requestAnimationFrame(() => this.loop());
     }
@@ -220,6 +236,25 @@ export class Game {
         document.getElementById('level').textContent = this.state.level;
     }
 
+    // 更新倒计时
+    updateCountdown() {
+        if (!this.preparationActive) return;
+
+        const elapsed = performance.now() - this.gameStartTime;
+        const remaining = Math.max(0, Math.ceil((CONFIG.PREPARATION_TIME - elapsed) / 1000));
+
+        const countdownTime = document.getElementById('countdown-time');
+        if (countdownTime) {
+            countdownTime.textContent = remaining;
+        }
+
+        // 如果倒计时结束，隐藏倒计时元素
+        if (remaining <= 0) {
+            const countdown = document.getElementById('countdown');
+            if (countdown) countdown.classList.add('hidden');
+        }
+    }
+
     // 升级防御塔
     upgradeTower(tower) {
         const result = UpgradeSystem.upgrade(tower, this.state.gold);
@@ -245,9 +280,25 @@ export class Game {
         document.getElementById('final-wave').textContent = this.state.wave;
         document.getElementById('final-mode').textContent = this.state.mode === 'classic' ? '经典模式' : '无尽模式';
 
-        const title = document.querySelector('#gameover h2');
-        title.textContent = isWin ? '胜利！' : '游戏结束';
-        title.style.color = isWin ? '#4aff4a' : '#ff4444';
+        const title = document.getElementById('gameover-title');
+        const reason = document.getElementById('gameover-reason');
+
+        if (isWin) {
+            title.textContent = '🎉 胜利！';
+            title.style.color = '#4aff4a';
+            reason.textContent = `你成功抵御了 ${this.state.wave} 波敌军进攻，守住了防线！`;
+        } else {
+            // 根据失败原因显示不同消息
+            if (this.state.lives <= 0) {
+                title.textContent = '💀 防线被突破！';
+                title.style.color = '#ff4444';
+                reason.textContent = `敌军突破了你的防线，你坚持了 ${this.state.wave} 波，击杀了 ${this.state.kills} 个敌人。`;
+            } else {
+                title.textContent = '游戏结束';
+                title.style.color = '#ff4444';
+                reason.textContent = '';
+            }
+        }
     }
 
     // 重新开始

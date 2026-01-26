@@ -1,0 +1,41 @@
+{
+  "timestamp": "2026-01-26T17:07:16.692714",
+  "round": 2,
+  "tests": [
+    {
+      "name": "页面加载",
+      "status": "PASS",
+      "detail": "页面加载成功"
+    },
+    {
+      "name": "启动游戏",
+      "status": "PASS",
+      "detail": "状态: {'phase': 'playing', 'gold': 200, 'lives': 10, 'towers': 0}"
+    },
+    {
+      "name": "放置防御塔",
+      "status": "PASS",
+      "detail": "放置了1个塔"
+    },
+    {
+      "name": "敌人生成",
+      "status": "PASS",
+      "detail": "敌人:2, 击杀:1, 波次:1"
+    },
+    {
+      "name": "问题检查",
+      "status": "PASS",
+      "detail": "发现2个问题"
+    },
+    {
+      "name": "测试",
+      "status": "FAIL",
+      "detail": "Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#btn-menu\")\n    - locator resolved to <button id=\"btn-menu\" class=\"btn-secondary\">返回主菜单</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    59 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n"
+    }
+  ],
+  "issues": [
+    "缺少发育时间/倒计时提示",
+    "发现1个控制台错误",
+    "测试失败: Page.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator(\"#btn-menu\")\n    - locator resolved to <button id=\"btn-menu\" class=\"btn-secondary\">返回主菜单</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    59 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n"
+  ]
+}
