@@ -9,11 +9,11 @@
 <body>
     <!-- 游戏主菜单 -->
     <div id="menu" class="menu">
-        <h1>诺曼底登陆</h1>
-        <p class="subtitle">塔防游戏</p>
+        <h1>⚔️ 诺曼底登陆 🏰</h1>
+        <p class="subtitle">塔防游戏 - 守住防线！</p>
         <div class="menu-buttons">
-            <button id="btn-classic" class="btn-primary">经典模式</button>
-            <button id="btn-endless" class="btn-primary">无尽模式</button>
+            <button id="btn-classic" class="btn-primary">🎯 经典模式</button>
+            <button id="btn-endless" class="btn-primary">♾️ 无尽模式</button>
         </div>
     </div>
 
@@ -23,49 +23,56 @@
     <!-- 游戏内 HUD -->
     <div id="hud" class="hud hidden">
         <div class="hud-left">
-            <span class="hud-item">波次: <span id="wave">1</span></span>
-            <span class="hud-item">生命: <span id="lives">10</span></span>
-            <span class="hud-item">金币: <span id="gold">100</span></span>
+            <span class="hud-item">🌊 波次: <span id="wave">1</span></span>
+            <span class="hud-item">❤️ 生命: <span id="lives">10</span></span>
+            <span class="hud-item">💰 金币: <span id="gold">100</span></span>
         </div>
         <div class="hud-center">
             <span id="mode-display"></span>
-            <span id="countdown" class="countdown hidden">敌军来袭: <span id="countdown-time">8</span>秒</span>
+            <span id="countdown" class="countdown hidden">⚠️ 敌军来袭: <span id="countdown-time">8</span>秒</span>
         </div>
         <div class="hud-right">
-            <span class="hud-item">击杀: <span id="kills">0</span></span>
-            <span class="hud-item">等级: <span id="level">1</span></span>
+            <span id="btn-speed" class="speed-btn">1x</span>
+            <span class="hud-item">💀 击杀: <span id="kills">0</span></span>
+            <span class="hud-item">⭐ 等级: <span id="level">1</span></span>
         </div>
+    </div>
+
+    <!-- 暂停遮罩 -->
+    <div id="pause-overlay" class="pause-overlay hidden">
+        <div class="pause-text">⏸️ 游戏已暂停</div>
+        <button id="btn-resume" class="btn-resume">▶️ 继续游戏</button>
     </div>
 
     <!-- 塔选择面板 -->
     <div id="tower-panel" class="tower-panel hidden">
         <div class="tower-type" data-type="machinegun">
-            <div class="tower-icon">MG</div>
+            <div class="tower-icon">🔫</div>
             <div class="tower-name">机枪塔</div>
-            <div class="tower-cost">50</div>
+            <div class="tower-cost">💰 50</div>
         </div>
         <div class="tower-type" data-type="cannon">
-            <div class="tower-icon">CN</div>
+            <div class="tower-icon">💥</div>
             <div class="tower-name">加农炮</div>
-            <div class="tower-cost">100</div>
+            <div class="tower-cost">💰 100</div>
         </div>
         <div class="tower-type" data-type="rifle">
-            <div class="tower-icon">RF</div>
+            <div class="tower-icon">🎯</div>
             <div class="tower-name">狙击塔</div>
-            <div class="tower-cost">75</div>
+            <div class="tower-cost">💰 75</div>
         </div>
     </div>
 
     <!-- 升级面板 -->
     <div id="upgrade-panel" class="upgrade-panel hidden">
-        <h3>防御塔</h3>
+        <h3>🏰 防御塔</h3>
         <div class="tower-info">
-            <span>等级: <span id="tower-level">1</span></span>
-            <span>伤害: <span id="tower-damage">10</span></span>
-            <span>射程: <span id="tower-range">100</span></span>
+            <span>⭐ 等级: <span id="tower-level">1</span></span>
+            <span>💥 伤害: <span id="tower-damage">10</span></span>
+            <span>📏 射程: <span id="tower-range">100</span></span>
         </div>
-        <button id="btn-upgrade" class="btn-upgrade">升级 (50)</button>
-        <button id="btn-close-upgrade" class="btn-secondary">关闭</button>
+        <button id="btn-upgrade" class="btn-upgrade">⬆️ 升级 (50)</button>
+        <button id="btn-close-upgrade" class="btn-secondary">❌ 关闭</button>
     </div>
 
     <!-- 结算界面 -->
@@ -74,25 +81,25 @@
         <p id="gameover-reason" class="gameover-reason"></p>
         <div class="stats">
             <div class="stat-item">
-                <span class="stat-label">最终等级</span>
+                <span class="stat-label">🏆 最终等级</span>
                 <span class="stat-value" id="final-level">1</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">击杀敌军</span>
+                <span class="stat-label">💀 击杀敌军</span>
                 <span class="stat-value" id="final-kills">0</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">坚持波次</span>
+                <span class="stat-label">🌊 坚持波次</span>
                 <span class="stat-value" id="final-wave">1</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">游戏模式</span>
+                <span class="stat-label">🎮 游戏模式</span>
                 <span class="stat-value" id="final-mode">经典</span>
             </div>
         </div>
         <div class="gameover-buttons">
-            <button id="btn-restart" class="btn-primary">重新开始</button>
-            <button id="btn-menu" class="btn-secondary">返回主菜单</button>
+            <button id="btn-restart" class="btn-primary">🔄 重新开始</button>
+            <button id="btn-menu" class="btn-secondary">🏠 返回主菜单</button>
         </div>
     </div>
 

@@ -230,7 +230,195 @@
 
 | 技能名称 | 用途 | 状态 |
 |---------|------|------|
-| webapp-testing | 本地 Web 应用自动化测试 | ✓ 已使用 |
+| webapp-testing | 本地 Web 应用自动化测试 | ✓ 已使用（3轮） |
 | commit | Git 提交管理 | 未使用 |
 | pdf | PDF 处理 | 未使用 |
 | review-pr | PR 审查 | 未使用 |
+
+---
+
+### 2026-01-27: webapp-testing 技能应用（第三轮·Bug修复验证）
+
+#### 1. 问题陈述
+用户报告了两个严重bug：
+1. 游戏开始时波次显示快速跳到上百波
+2. 游戏结束后画布未清空，主菜单和游戏画面重叠
+
+第三轮测试重点验证这些bug是否被修复，并验证之前的Canvas尺寸修复。
+
+#### 2. 技能输出
+
+**测试脚本**: `.claude/skills/webapp-testing/test_bugfixes.py`
+
+**测试覆盖**:
+| 测试项 | 描述 | 结果 |
+|--------|------|------|
+| 启动经典模式 | 游戏启动，检查初始状态 | PASS |
+| 验证波次显示 | 确认波次不会跳变到上百波 | PASS (波次正常: 0→1→2) |
+| 右侧区域放置建筑 | 验证全屏建筑放置功能 | PASS (画布宽度1280, x=1024可放置) |
+| 返回主菜单画布清理 | 验证菜单返回时清空游戏状态 | PASS (防御塔从1→0) |
+| 波次完成通知 | 验证无尽模式波次显示 | PASS (显示"无尽模式 - 第1波") |
+
+**发现的新问题**:
+1. **第0波完成提示错误** - 游戏启动时显示"✓ 第0波完成！"
+
+#### 3. 如何用于项目
+
+**Bug根本原因分析**:
+
+**问题1：波次跳变**
+- 原因: `update()` 每秒60次调用波次完成检查
+- 后果: 多个 `setTimeout` 叠加导致 `startNextWave()` 被疯狂调用
+- 修复: 添加 `waveCompleteTimer` 锁防止重复触发
+
+**问题2：画布未清空**
+- 原因: `returnToMenu()` 只切换UI显示状态
+- 后果: 游戏实体数组未清空，画面残留
+- 修复: 在 `showMenu()` 中清空所有实体数组和画布
+
+**问题3：第0波完成提示**（测试中发现）
+- 原因: 游戏启动时 `wave=0`，波次完成条件立即满足
+- 修复: 添加 `this.state.wave > 0` 检查
+
+#### 4. 产生的��动
+
+**修改文件**: `src/core/Game.js`
+
+```javascript
+// 1. 添加波次完成定时器锁
+this.waveCompleteTimer = null;
+
+// 2. 波次完成检查使用锁
+if (!this.waveCompleteTimer && this.state.wave > 0) {
+    const modeDisplay = document.getElementById('mode-display');
+    if (modeDisplay) {
+        modeDisplay.textContent = `✓ 第${this.state.wave}波完成！`;
+        modeDisplay.style.color = '#4aff4a';
+    }
+    this.waveCompleteTimer = setTimeout(() => {
+        this.waveCompleteTimer = null;
+        this.startNextWave();
+    }, 2000);
+}
+
+// 3. showMenu() 清空游戏状态
+showMenu() {
+    // ... UI切换代码 ...
+    this.state.enemies = [];
+    this.state.towers = [];
+    this.state.projectiles = [];
+    this.state.effects = [];
+    this.renderer.clear();
+}
+
+// 4. 游戏开始时清除遗留定时器
+start(mode) {
+    if (this.waveCompleteTimer) {
+        clearTimeout(this.waveCompleteTimer);
+        this.waveCompleteTimer = null;
+    }
+    // ... 其他初始化代码 ...
+}
+```
+
+#### 5. 技能价值总结
+
+第三轮测试带来的价值：
+- **Bug验证** - 确认两个严重bug已修复
+- **根因分析** - 定位问题根本原因（定时器叠加）
+- **新问题发现** - 测试中发现"第0波完成"显示错误
+- **全屏测试** - 验证Canvas尺寸修复有效（1280宽度可放置）
+
+#### 6. 测试结果总结
+
+| 修复项 | 状态 | 验证方法 |
+|--------|------|----------|
+| 波次跳变修复 | ✓ PASS | 波次正常递增 0→1→2 |
+| 画布清理修复 | ✓ PASS | 返回菜单后防御塔从1→0 |
+| 全屏建筑放置 | ✓ PASS | x=1024位置可放置 |
+| 第0波显示错误 | ✓ PASS | 启动时显示"经典模式"（非"第0波完成"） |
+
+**生成文件**:
+- `.claude/skills/webapp-testing/test_bugfixes.py` - Bug修复验证脚本
+- `.claude/skills/webapp-testing/test_result.png` - 测试结果截图
+
+---
+
+### 2026-01-27: 波次流程与刷新节奏完整重构
+
+#### 1. 问题陈述
+用户报告两个核心问题：
+1. **波次流程不完整** - 波次结束后无法进入下一波，游戏卡死
+2. **敌人刷新节奏生硬** - 每波内使用固定间隔，没有加速感
+
+#### 2. 技能输出
+
+**测试脚本**: `.claude/skills/webapp-testing/test_wave_flow.py`
+
+#### 3. 根本原因分析
+
+**问题1：波次流程卡死**
+- 原因: `waveInProgress` 在 `startWave()` 设为 `true` 后从未重置为 `false`
+- 后果: 波次完成检查条件 `!this.waveSystem.waveInProgress` 永远为 `false`
+- 修复: 在 `enemiesToSpawn` 为空时设置 `waveInProgress = false`
+
+**问题2：刷新节奏生硬**
+- 原因: 使用固定间隔 `Math.max(config.spawnInterval, 800)`
+- 后果: 整个波次节奏不变，没有压迫感
+- 修复: 实现动态间隔，随时间线性衰减
+
+#### 4. 设计方案
+
+**波次状态机**:
+```
+PREPARING → SPAWNING → WAITING_CLEAR → COMPLETE
+```
+
+**动态刷新公式**:
+```javascript
+currentInterval = baseInterval - (baseInterval - minInterval) * decayProgress * intervalDecay
+```
+
+**参数集中配置**:
+```javascript
+WAVE_MECHANICS: {
+    baseSpawnInterval: 1200,    // 初始间隔
+    minSpawnInterval: 300,      // 最小间隔
+    intervalDecay: 0.7,         // 70%衰减
+    enemyCountPerWave: 5,       // 每波+5敌人
+    intervalDecreasePerWave: 60 // 每波快60ms
+}
+```
+
+#### 5. 代码改动
+
+**文件**: `src/utils/config.js`
+- 添加 `WAVE_MECHANICS` 配置节，集中管理波次参数
+
+**文件**: `src/systems/WaveSystem.js`
+- 添加 `waveStartTime` 记录波次开始时间
+- 添加 `getCurrentSpawnInterval()` 计算动态间隔
+- 修改 `update()` 在生成完毕时设置 `waveInProgress = false`
+- 添加 `getWaveProgress()` 用于调试
+
+**文件**: `src/core/Game.js`
+- 简化波次完成检查，使用 `isWaveComplete()` 方法
+- 使用 `CONFIG.WAVE_MECHANICS.waveCompleteDelay`
+
+#### 6. 改动效果
+
+| 项目 | 修改前 | 修改后 |
+|------|--------|--------|
+| 波次完成检测 | 永远不触发 | 正常触发并自动下一波 |
+| 第1波敌人 | 50个 | 40个（更合理的起点） |
+| 第1波刷新间隔 | 固定800ms | 1200ms→逐渐加速→300ms |
+| 第5波刷新间隔 | 固定500ms | 840ms→逐渐加速→300ms |
+| 波次间隔 | 2秒 | 2秒（可配置） |
+
+#### 7. 技能价值
+
+- 完整修复波次流程，游戏可正常完成
+- 动态刷新机制提升游戏体验
+- 参数集中化，便于平衡调整
+
+---

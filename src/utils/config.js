@@ -1,12 +1,12 @@
 // 游戏配置常量
 export const CONFIG = {
-    // 画布尺寸
-    CANVAS_WIDTH: 1200,
-    CANVAS_HEIGHT: 800,
+    // 画布尺寸 - 动态获取
+    get CANVAS_WIDTH() { return window.innerWidth || 1200; },
+    get CANVAS_HEIGHT() { return window.innerHeight || 800; },
 
     // 游戏平衡参数
     INITIAL_LIVES: 10,
-    INITIAL_GOLD: 200, // 增加初始金币
+    INITIAL_GOLD: 400, // 初始金币（可放置8个机枪塔或组合搭配）
     INITIAL_LEVEL: 1,
 
     // 游戏节奏配置
@@ -69,14 +69,25 @@ export const CONFIG = {
     WAVES: {
         classic: {
             totalWaves: 10,
-            baseEnemyCount: 5,
+            baseEnemyCount: 40,
             baseHpMultiplier: 1.0
         },
         endless: {
-            baseEnemyCount: 5,
+            baseEnemyCount: 40,
             baseHpMultiplier: 1.0,
-            waveIncrement: 0.2 // 每波增加20%
+            waveIncrement: 0.1
         }
+    },
+
+    // 波次机制配置（集中管理）
+    WAVE_MECHANICS: {
+        preparationTime: 8000,      // 首波准备时间（毫秒）
+        waveCompleteDelay: 2000,    // 波次完成后等待时间（毫秒）
+        baseSpawnInterval: 1200,    // 波次开始时的生成间隔（毫秒）
+        minSpawnInterval: 300,      // 最小生成间隔（毫秒）
+        intervalDecay: 0.7,         // 间隔衰减系数（70%的间隔会在波次内逐渐消失）
+        enemyCountPerWave: 5,       // 每波增加的敌人数量
+        intervalDecreasePerWave: 60 // 每波基础间隔减少量（毫秒）
     },
 
     // 升级配置

@@ -9,6 +9,7 @@ export class WaveSystem {
         this.enemiesToSpawn = [];
         this.spawnTimer = 0;
         this.waveInProgress = false;
+        this.waveStartTime = 0; // 波次开始时间（用于计算间隔衰减）
     }
 
     // 开始新波次
@@ -36,70 +37,85 @@ export class WaveSystem {
 
         this.spawnTimer = 0;
         this.waveInProgress = true;
+        this.waveStartTime = performance.now(); // 记录波次开始时间
     }
 
     // 获取波次配置
     getWaveConfig(waveNumber) {
         const mode = this.game.state.mode;
+        const mechanics = CONFIG.WAVE_MECHANICS;
 
+        // 计算敌人数量
+        let count;
         if (mode === 'classic') {
-            // 经典模式：固定波次配置
-            const baseCount = CONFIG.WAVES.classic.baseEnemyCount;
-            const count = baseCount + Math.floor(waveNumber * 1.5);
-            const hpMult = CONFIG.WAVES.classic.baseHpMultiplier + (waveNumber - 1) * 0.15;
-
-            // 随着波次增加，可能出现登陆艇
-            let types = ['soldier'];
-            if (waveNumber >= 3) types.push('landing_craft');
-
-            return {
-                waveNumber,
-                enemyCount: count,
-                enemyTypes: types,
-                spawnInterval: Math.max(500, 1500 - waveNumber * 50),
-                hpMultiplier: hpMult
-            };
+            count = CONFIG.WAVES.classic.baseEnemyCount + (waveNumber - 1) * mechanics.enemyCountPerWave;
         } else {
-            // 无尽模式：持续递增
-            const baseCount = CONFIG.WAVES.endless.baseEnemyCount;
-            const increment = CONFIG.WAVES.endless.waveIncrement;
-            const count = Math.floor(baseCount + waveNumber * 2);
-            const hpMult = CONFIG.WAVES.endless.baseHpMultiplier + waveNumber * increment;
-
-            let types = ['soldier'];
-            if (waveNumber >= 3) types.push('landing_craft');
-
-            return {
-                waveNumber,
-                enemyCount: count,
-                enemyTypes: types,
-                spawnInterval: Math.max(400, 1200 - waveNumber * 30),
-                hpMultiplier: hpMult
-            };
+            count = CONFIG.WAVES.endless.baseEnemyCount + (waveNumber - 1) * mechanics.enemyCountPerWave;
         }
+
+        // 计算基础生成间隔（随波次递减）
+        const baseInterval = Math.max(
+            mechanics.minSpawnInterval,
+            mechanics.baseSpawnInterval - (waveNumber - 1) * mechanics.intervalDecreasePerWave
+        );
+
+        // 计算血量倍率
+        let hpMult;
+        if (mode === 'classic') {
+            hpMult = CONFIG.WAVES.classic.baseHpMultiplier + (waveNumber - 1) * 0.1;
+        } else {
+            hpMult = CONFIG.WAVES.endless.baseHpMultiplier + (waveNumber - 1) * 0.1;
+        }
+
+        // 随着波次增加，可能出现登陆艇
+        let types = ['soldier'];
+        if (waveNumber >= 3) types.push('landing_craft');
+        if (waveNumber >= 7) types.push('landing_craft'); // 后期更多登陆艇
+
+        return {
+            waveNumber,
+            enemyCount: count,
+            enemyTypes: types,
+            baseInterval: baseInterval,        // 波次开始时的间隔
+            minInterval: mechanics.minSpawnInterval,
+            intervalDecay: mechanics.intervalDecay, // 间隔衰减系数
+            hpMultiplier: hpMult
+        };
+    }
+
+    // 计算当前生成间隔（随时间线性衰减）
+    getCurrentSpawnInterval() {
+        const config = this.getWaveConfig(this.currentWave);
+        const elapsed = performance.now() - this.waveStartTime;
+
+        // 估算波次总时长（基于敌人数量和最小间隔）
+        const estimatedWaveDuration = this.enemiesToSpawn.length * config.minInterval;
+
+        // 计算衰减进度（0~1）
+        const decayProgress = Math.min(1, elapsed / (estimatedWaveDuration * 2)); // *2 让衰减更平缓
+
+        // 线性衰减公式
+        const currentInterval = config.baseInterval - (config.baseInterval - config.minInterval) * decayProgress * config.intervalDecay;
+
+        return Math.max(config.minInterval, currentInterval);
     }
 
     // 更新生成逻辑
     update(deltaTime) {
-        // 如果没有敌人需要生成，检查是否波次完成
-        if (this.enemiesToSpawn.length === 0) {
-            // 所有敌人都已生成，等待当前敌人被消灭
-            if (this.waveInProgress && this.game.state.enemies.length === 0) {
-                this.waveInProgress = false;
-                return 'waveComplete';
-            }
+        if (!this.waveInProgress) {
             return null;
         }
 
-        if (!this.waveInProgress) {
+        // 如果没有敌人需要生成，标记波次生成完成
+        if (this.enemiesToSpawn.length === 0) {
+            this.waveInProgress = false; // 关键：设为 false，允许波次完成检查
             return null;
         }
 
         this.spawnTimer += deltaTime;
 
-        // 根据配置的间隔生成敌人
-        const config = this.getWaveConfig(this.currentWave);
-        const interval = Math.max(config.spawnInterval, 800); // 最小800ms间隔
+        // 使用动态间隔（随时间逐渐加快）
+        const interval = this.getCurrentSpawnInterval();
 
         if (this.spawnTimer >= interval) {
             const enemyData = this.enemiesToSpawn.shift();
@@ -116,13 +132,30 @@ export class WaveSystem {
         return null;
     }
 
-    // 检查波次是否完成
+    // 检查波次是否完成（所有敌人生成完毕且被消灭）
     isWaveComplete() {
-        return !this.waveInProgress && this.enemiesToSpawn.length === 0 && this.game.state.enemies.length === 0;
+        return !this.waveInProgress && // 生成已完成
+               this.enemiesToSpawn.length === 0 && // 待生成列表为空
+               this.game.state.enemies.length === 0; // 当前敌人已全部消灭
     }
 
     // 检查经典模式是否通关
     isClassicComplete() {
         return this.game.state.mode === 'classic' && this.currentWave >= CONFIG.WAVES.classic.totalWaves;
+    }
+
+    // 获取波次进度信息（用于调试和UI显示）
+    getWaveProgress() {
+        const config = this.getWaveConfig(this.currentWave);
+        const totalEnemies = config.enemyCount;
+        const spawnedEnemies = totalEnemies - this.enemiesToSpawn.length;
+        const remainingEnemies = this.game.state.enemies.length;
+
+        return {
+            total: totalEnemies,
+            spawned: spawnedEnemies,
+            alive: remainingEnemies,
+            killed: spawnedEnemies - remainingEnemies
+        };
     }
 }

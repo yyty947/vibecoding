@@ -1,35 +1,29 @@
 {
-  "timestamp": "2026-01-26T15:55:23.606911",
+  "timestamp": "2026-01-27T09:54:07.996187",
   "tests": [
     {
-      "name": "Page Load",
+      "name": "TC-01",
+      "description": "端到端完整流程（经典模式）",
       "status": "PASS",
-      "detail": "Canvas and menu displayed"
+      "detail": "E2E流程完成，击杀数: 2"
     },
     {
-      "name": "Mode Selection",
-      "status": "FAIL",
-      "detail": "Page.click: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\"text=开始游戏\")\n"
-    },
-    {
-      "name": "Start Classic Mode",
+      "name": "TC-02",
+      "description": "无尽模式基础验证",
       "status": "PASS",
-      "detail": "Game started"
+      "detail": "无尽模式正常，敌人: 2"
     },
     {
-      "name": "Place Tower",
-      "status": "FAIL",
-      "detail": "Page.click: Timeout 5000ms exceeded.\nCall log:\n  - waiting for locator(\".tower-type[data-type='BASIC']\")\n"
-    },
-    {
-      "name": "Enemy Movement",
-      "status": "PARTIAL",
-      "detail": "Enemies: 0"
-    },
-    {
-      "name": "Console Check",
-      "status": "WARN",
-      "detail": "2 errors found"
+      "name": "TC-04",
+      "description": "暂停/加速功能",
+      "status": "PASS",
+      "detail": "暂停/加速功能正常"
     }
-  ]
+  ],
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "total": 3,
+    "pass_rate": "3/3"
+  }
 }

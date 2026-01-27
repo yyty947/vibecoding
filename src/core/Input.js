@@ -47,6 +47,17 @@ export class Input {
             });
         }
 
+        // 速度控制按钮 - 使用事件委托处理动态添加的按钮
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'btn-speed') {
+                this.game.toggleSpeed();
+            }
+            // 继续游戏按钮
+            if (e.target.id === 'btn-resume') {
+                this.game.toggleSpeed();
+            }
+        });
+
         // 塔选择面板 - 使用事件委托
         const towerPanel = document.getElementById('tower-panel');
         if (towerPanel) {

@@ -14,10 +14,10 @@ export class Game {
         this.input = new Input(this, canvas);
         this.waveSystem = null;
 
-        // 游戏状态
+        // ��戏状态
         this.state = {
             mode: null,
-            phase: 'menu', // menu, playing, gameover
+            phase: 'menu', // menu, playing, paused, gameover
             wave: 0,
             gold: CONFIG.INITIAL_GOLD,
             lives: CONFIG.INITIAL_LIVES,
@@ -31,6 +31,14 @@ export class Game {
 
         this.lastTime = 0;
         this.waveTimer = 0;
+
+        // 速度控制：0=暂停, 1=正常, 2=加速
+        this.gameSpeed = 1;
+        this.speedOptions = [0, 1, 2]; // 暂停, 正常, 加速
+        this.speedIndex = 1; // 默认正常速度
+
+        // 波次完成定时器（防止重复触发）
+        this.waveCompleteTimer = null;
     }
 
     // 初始化游戏
@@ -46,6 +54,13 @@ export class Game {
         document.getElementById('hud').classList.add('hidden');
         document.getElementById('tower-panel').classList.add('hidden');
         document.getElementById('gameover').classList.add('hidden');
+
+        // 清空游戏状态和画布
+        this.state.enemies = [];
+        this.state.towers = [];
+        this.state.projectiles = [];
+        this.state.effects = [];
+        this.renderer.clear();
     }
 
     // 开始游戏
@@ -65,9 +80,19 @@ export class Game {
         this.waveSystem = new WaveSystem(this);
         this.waveTimer = 0;
 
+        // 清除之前的波次完成定时器
+        if (this.waveCompleteTimer) {
+            clearTimeout(this.waveCompleteTimer);
+            this.waveCompleteTimer = null;
+        }
+
         // 记录游戏开始时间，用于倒计时
         this.gameStartTime = performance.now();
         this.preparationActive = true;
+
+        // 重置速度
+        this.speedIndex = 1;
+        this.gameSpeed = 1;
 
         // 更新UI
         document.getElementById('menu').classList.add('hidden');
@@ -78,6 +103,9 @@ export class Game {
 
         // 显示倒计时
         document.getElementById('countdown').classList.remove('hidden');
+
+        // 初始化速度按钮
+        this.updateSpeedButton();
 
         this.updateHUD();
 
@@ -101,22 +129,44 @@ export class Game {
         const countdown = document.getElementById('countdown');
         if (countdown) countdown.classList.add('hidden');
 
+        // 显示波次提示（在模式显示位置）
+        const modeDisplay = document.getElementById('mode-display');
+        if (modeDisplay) {
+            modeDisplay.style.color = ''; // 重置颜色
+            if (this.state.mode === 'classic') {
+                const totalWaves = CONFIG.WAVES.classic.totalWaves;
+                const currentWave = this.state.wave;
+                modeDisplay.textContent = `第${currentWave}/${totalWaves}波`;
+            } else {
+                modeDisplay.textContent = `无尽模式 - 第${this.state.wave}波`;
+            }
+        }
+
         this.updateHUD();
     }
 
     // 游戏主循环
     loop() {
-        if (this.state.phase !== 'playing') return;
+        if (this.state.phase !== 'playing' && this.state.phase !== 'paused') return;
 
         const currentTime = performance.now();
-        const deltaTime = currentTime - this.lastTime;
+        let deltaTime = currentTime - this.lastTime;
         this.lastTime = currentTime;
 
-        this.update(deltaTime);
+        // 暂停时不更新逻辑，但继续渲染
+        if (this.state.phase === 'playing') {
+            // 应用游戏速度
+            deltaTime *= this.gameSpeed;
+
+            this.update(deltaTime);
+        }
+
         this.render();
 
-        // 更新倒计时显示
-        this.updateCountdown();
+        // 更新倒计时显示（暂停时不更新）
+        if (this.state.phase === 'playing') {
+            this.updateCountdown();
+        }
 
         requestAnimationFrame(() => this.loop());
     }
@@ -125,15 +175,7 @@ export class Game {
     update(deltaTime) {
         // 更新波次系统（生成敌人）
         const newEnemy = this.waveSystem.update(deltaTime);
-        if (newEnemy === 'waveComplete') {
-            // 波次完成
-            if (this.waveSystem.isClassicComplete()) {
-                this.gameOver(true);
-                return;
-            }
-            // 开始下一波
-            setTimeout(() => this.startNextWave(), 2000);
-        } else if (newEnemy) {
+        if (newEnemy) {
             this.state.enemies.push(newEnemy);
         }
 
@@ -194,9 +236,29 @@ export class Game {
             return effect.age < effect.maxAge;
         });
 
-        // 检查是否波次结束
-        if (this.state.enemies.length === 0 && this.waveSystem.enemiesToSpawn.length === 0) {
-            this.waveSystem.waveInProgress = false;
+        // 检查波次是否完成
+        if (this.waveSystem.isWaveComplete()) {
+            // 检查是否通关（经典模式）
+            if (this.waveSystem.isClassicComplete()) {
+                this.gameOver(true);
+                return;
+            }
+
+            // 显示波次完成提示并开始下一波（只触发一次）
+            if (!this.waveCompleteTimer && this.state.wave > 0) {
+                const modeDisplay = document.getElementById('mode-display');
+                if (modeDisplay) {
+                    modeDisplay.textContent = `✅ 第${this.state.wave}波完成！准备下一波...`;
+                    modeDisplay.style.color = '#4aff4a';
+                }
+
+                // 延迟后开始下一波
+                const delay = CONFIG.WAVE_MECHANICS.waveCompleteDelay;
+                this.waveCompleteTimer = setTimeout(() => {
+                    this.waveCompleteTimer = null;
+                    this.startNextWave();
+                }, delay);
+            }
         }
     }
 
@@ -309,5 +371,41 @@ export class Game {
     // 返回主菜单
     returnToMenu() {
         this.showMenu();
+    }
+
+    // 切换游戏速度
+    toggleSpeed() {
+        this.speedIndex = (this.speedIndex + 1) % this.speedOptions.length;
+        this.gameSpeed = this.speedOptions[this.speedIndex];
+
+        // 根据速度设置游戏状态
+        if (this.gameSpeed === 0) {
+            this.state.phase = 'paused';
+        } else if (this.state.phase === 'paused') {
+            this.state.phase = 'playing';
+        }
+
+        // 更新UI
+        this.updateSpeedButton();
+        this.updateHUD();
+    }
+
+    // 更新速度按钮显示
+    updateSpeedButton() {
+        const btn = document.getElementById('btn-speed');
+        if (!btn) return;
+
+        const labels = ['▶', '1x', '2x'];
+        btn.textContent = labels[this.speedIndex];
+
+        // 更新暂停遮罩
+        const overlay = document.getElementById('pause-overlay');
+        if (overlay) {
+            if (this.gameSpeed === 0) {
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
+        }
     }
 }
