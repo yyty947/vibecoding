@@ -16,8 +16,11 @@
 - ✅ 页面加载与渲染
 - ✅ 主菜单交互
 - ✅ 游戏模式选择
-- ✅ 防御塔放置
-- ✅ 敌人生成与战斗
+- ✅ 防御塔放置（6种类型）
+- ✅ 敌人生成与战斗（4种类型）
+- ✅ 全局升级系统
+- ✅ Combo连击系统
+- ✅ 交战系统
 - ✅ 游戏结算
 
 ### 不在范围内
@@ -46,10 +49,10 @@ playwright install chromium
 cd C:\Users\y\Desktop\vibecoding\project
 
 # 启动 HTTP 服务器（必需！不能直接打开 HTML）
-python -m http.server 8000
+python -m http.server 8001
 ```
 
-服务器启动后，访问 **http://localhost:8000** 确认游戏可运行。
+服务器启动后，访问 **http://localhost:8001** 确认游戏可运行。
 
 ---
 
@@ -59,10 +62,10 @@ python -m http.server 8000
 
 **优先级**: P0（必须通过）
 
-**前置条件**: HTTP 服务器运行在端口 8000
+**前置条件**: HTTP 服务器运行在端口 8001
 
 **测试步骤**:
-1. 打开游戏页面 `http://localhost:8000`
+1. 打开游戏页面 `http://localhost:8001`
 2. 验证主菜单显示（标题、两个模式按钮）
 3. 点击"经典模式"按钮
 4. 等待游戏加载（HUD 显示、倒计时开始）
@@ -143,7 +146,7 @@ python -m http.server 8000
 cd C:\Users\y\Desktop\vibecoding\project
 
 # 确保服务器运行
-python -m http.server 8000
+python -m http.server 8001
 
 # 新开终端运行测试
 cd .claude\skills\webapp-testing

@@ -20,7 +20,6 @@ export class Input {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.bindDOMEvents());
         } else {
-            // DOM 已经加载完成
             this.bindDOMEvents();
         }
     }
@@ -47,16 +46,39 @@ export class Input {
             });
         }
 
-        // 速度控制按钮 - 使用事件委托处理动态添加的按钮
+        // 速度控制按钮 - 只控制倍速
         document.addEventListener('click', (e) => {
             if (e.target.id === 'btn-speed') {
                 this.game.toggleSpeed();
             }
-            // 继续游戏按钮
-            if (e.target.id === 'btn-resume') {
-                this.game.toggleSpeed();
+        });
+
+        // 暂停按钮
+        document.addEventListener('click', (e) => {
+            if (e.target.id === 'btn-pause') {
+                this.game.togglePause();
             }
         });
+
+        // 暂停菜单按钮
+        const btnResume = document.getElementById('btn-resume');
+        const btnRestartPause = document.getElementById('btn-restart-pause');
+        const btnMenuPause = document.getElementById('btn-menu-pause');
+        if (btnResume) {
+            btnResume.addEventListener('click', () => this.game.togglePause());
+        }
+        if (btnRestartPause) {
+            btnRestartPause.addEventListener('click', () => {
+                this.game.togglePause();
+                this.game.restart();
+            });
+        }
+        if (btnMenuPause) {
+            btnMenuPause.addEventListener('click', () => {
+                this.game.togglePause();
+                this.game.returnToMenu();
+            });
+        }
 
         // 塔选择面板 - 使用事件委托
         const towerPanel = document.getElementById('tower-panel');
@@ -70,14 +92,16 @@ export class Input {
             });
         }
 
-        // 升级面板按钮
-        const btnUpgrade = document.getElementById('btn-upgrade');
-        const btnCloseUpgrade = document.getElementById('btn-close-upgrade');
-        if (btnUpgrade) {
-            btnUpgrade.addEventListener('click', () => this.handleUpgrade());
-        }
-        if (btnCloseUpgrade) {
-            btnCloseUpgrade.addEventListener('click', () => this.closeUpgradePanel());
+        // 塔类型升级按钮 - 使用事件委托
+        const upgradePanel = document.getElementById('upgrade-panel');
+        if (upgradePanel) {
+            upgradePanel.addEventListener('click', (e) => {
+                const btn = e.target.closest('.btn-upgrade-type');
+                if (btn) {
+                    const type = btn.id.replace('btn-upgrade-', '');
+                    this.game.upgradeTowerType(type);
+                }
+            });
         }
 
         // 游戏结束面板按钮
@@ -100,13 +124,6 @@ export class Input {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        // 检查是否点击了已有的塔
-        const clickedTower = this.findTowerAt(x, y);
-        if (clickedTower) {
-            this.showUpgradePanel(clickedTower);
-            return;
-        }
-
         // 如果选择了塔类型，尝试放置
         if (this.selectedTowerType) {
             this.tryPlaceTower(x, y);
@@ -120,6 +137,16 @@ export class Input {
     }
 
     selectTowerType(type, element) {
+        // 检查防御塔是否解锁
+        const towerConfig = CONFIG.TOWERS[type];
+        if (!towerConfig) return;
+
+        const unlockWave = towerConfig.unlockWave || 0;
+        if (this.game.state.wave < unlockWave) {
+            console.log('Tower locked, unlocks at wave', unlockWave);
+            return;
+        }
+
         this.selectedTowerType = type;
 
         // 更新 UI 选中状态
@@ -128,7 +155,6 @@ export class Input {
             element.classList.add('selected');
         }
 
-        this.closeUpgradePanel();
         console.log('Tower type selected:', type);
     }
 
@@ -166,41 +192,6 @@ export class Input {
             const dy = tower.y - y;
             return Math.hypot(dx, dy) < 25;
         });
-    }
-
-    showUpgradePanel(tower) {
-        this.selectedTower = tower;
-        this.selectedTowerType = null;
-        document.querySelectorAll('.tower-type').forEach(el => el.classList.remove('selected'));
-
-        const panel = document.getElementById('upgrade-panel');
-        if (panel) panel.classList.remove('hidden');
-
-        // 更新塔信息
-        const levelEl = document.getElementById('tower-level');
-        const damageEl = document.getElementById('tower-damage');
-        const rangeEl = document.getElementById('tower-range');
-        if (levelEl) levelEl.textContent = tower.level;
-        if (damageEl) damageEl.textContent = tower.damage;
-        if (rangeEl) rangeEl.textContent = tower.range;
-
-        // 更新升级按钮
-        const btn = document.getElementById('btn-upgrade');
-        if (btn) {
-            const cost = tower.getUpgradeCost();
-            const canUpgrade = cost !== Infinity && this.game.state.gold >= cost;
-            btn.textContent = cost === Infinity ? '已满级' : `升级 (${cost})`;
-            btn.disabled = !canUpgrade;
-        }
-    }
-
-    handleUpgrade() {
-        if (!this.selectedTower) return;
-
-        const result = this.game.upgradeTower(this.selectedTower);
-        if (result) {
-            this.showUpgradePanel(this.selectedTower); // 刷新显示
-        }
     }
 
     closeUpgradePanel() {

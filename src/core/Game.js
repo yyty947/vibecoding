@@ -6,6 +6,7 @@ import { WaveSystem } from '../systems/WaveSystem.js';
 import { UpgradeSystem } from '../systems/UpgradeSystem.js';
 import { CollisionSystem } from '../systems/CollisionSystem.js';
 import { Projectile } from '../entities/Projectile.js';
+import { Tower } from '../entities/Tower.js';
 
 export class Game {
     constructor(canvas) {
@@ -32,13 +33,20 @@ export class Game {
         this.lastTime = 0;
         this.waveTimer = 0;
 
-        // 速度控制：0=暂停, 1=正常, 2=加速
+        // 速度控制：1=正常, 2=加速
         this.gameSpeed = 1;
-        this.speedOptions = [0, 1, 2]; // 暂停, 正常, 加速
-        this.speedIndex = 1; // 默认正常速度
+        this.speedOptions = [1, 2]; // 正常, 加速
+        this.speedIndex = 0; // 默认正常速度
 
         // 波次完成定时器（防止重复触发）
         this.waveCompleteTimer = null;
+
+        // 连击（Combo）系统状态
+        this.combo = {
+            count: 0,              // 当前连击数
+            lastKillTime: 0,       // 上次击杀时间
+            multiplier: 1          // 当前倍率
+        };
     }
 
     // 初始化游戏
@@ -53,7 +61,9 @@ export class Game {
         document.getElementById('menu').classList.remove('hidden');
         document.getElementById('hud').classList.add('hidden');
         document.getElementById('tower-panel').classList.add('hidden');
+        document.getElementById('upgrade-panel').classList.add('hidden');
         document.getElementById('gameover').classList.add('hidden');
+        document.getElementById('pause-menu').classList.add('hidden');
 
         // 清空游戏状态和画布
         this.state.enemies = [];
@@ -86,12 +96,19 @@ export class Game {
             this.waveCompleteTimer = null;
         }
 
+        // 重置 Combo 状态
+        this.combo = {
+            count: 0,
+            lastKillTime: 0,
+            multiplier: 1
+        };
+
         // 记录游戏开始时间，用于倒计时
         this.gameStartTime = performance.now();
         this.preparationActive = true;
 
         // 重置速度
-        this.speedIndex = 1;
+        this.speedIndex = 0;
         this.gameSpeed = 1;
 
         // 更新UI
@@ -99,6 +116,7 @@ export class Game {
         document.getElementById('gameover').classList.add('hidden');
         document.getElementById('hud').classList.remove('hidden');
         document.getElementById('tower-panel').classList.remove('hidden');
+        document.getElementById('upgrade-panel').classList.remove('hidden');
         document.getElementById('mode-display').textContent = mode === 'classic' ? '经典模式' : '无尽模式';
 
         // 显示倒计时
@@ -108,9 +126,11 @@ export class Game {
         this.updateSpeedButton();
 
         this.updateHUD();
+        this.updateTowerPanel();
+        this.updateUpgradeButtons();
 
-        // 发育时间 - 玩家有时间布置防御塔
-        setTimeout(() => this.startNextWave(), CONFIG.PREPARATION_TIME);
+        // 发育时间 - 首波10秒，让玩家有时间布置防御塔
+        setTimeout(() => this.startNextWave(), CONFIG.WAVE_MECHANICS.firstWavePreparationTime);
 
         // 开始游戏循环
         this.lastTime = performance.now();
@@ -142,7 +162,12 @@ export class Game {
             }
         }
 
+        // 显示升级面板（修复Bug #1）
+        const upgradePanel = document.getElementById('upgrade-panel');
+        if (upgradePanel) upgradePanel.classList.remove('hidden');
+
         this.updateHUD();
+        this.updateTowerPanel();
     }
 
     // 游戏主循环
@@ -173,6 +198,15 @@ export class Game {
 
     // 更新游戏逻辑
     update(deltaTime) {
+        const currentTime = performance.now();
+
+        // 检查 Combo 是否超时（在非暂停状态下）
+        if (this.combo.count > 0 && performance.now() - this.combo.lastKillTime > CONFIG.COMBO.windowMs) {
+            this.combo.count = 0;
+            this.combo.multiplier = 1;
+            this.updateHUD();
+        }
+
         // 更新波次系统（生成敌人）
         const newEnemy = this.waveSystem.update(deltaTime);
         if (newEnemy) {
@@ -181,6 +215,22 @@ export class Game {
 
         // 更新敌人位置
         this.state.enemies.forEach(enemy => enemy.update());
+
+        // 敌人攻击防御塔
+        this.state.enemies.forEach(enemy => {
+            const target = enemy.canAttackTower(currentTime, this.state.towers);
+            if (target && target.isAlive()) {
+                enemy.attackTower(target, currentTime);
+            }
+        });
+
+        // 移除被摧毁的防御塔
+        const aliveTowers = this.state.towers.filter(tower => tower.isAlive());
+        if (aliveTowers.length !== this.state.towers.length) {
+            this.state.towers = aliveTowers;
+            // 隐藏升级面板（如果选中的塔被摧毁）
+            document.getElementById('upgrade-panel').classList.add('hidden');
+        }
 
         // 检查敌人是否到达终点
         const reachedEnemies = CollisionSystem.checkEnemiesReachedEnd(this.state.enemies);
@@ -217,7 +267,10 @@ export class Game {
                     const killed = target.takeDamage(proj.damage);
                     if (killed) {
                         this.state.kills++;
-                        this.state.gold += target.reward;
+                        // 更新 Combo
+                        this.updateCombo();
+                        // 应用 Combo 倍率到金币奖励
+                        this.state.gold += Math.floor(target.reward * this.combo.multiplier);
                         this.state.level = UpgradeSystem.calculateLevel(this.state.kills, this.state.wave);
                         this.state.enemies = this.state.enemies.filter(e => e.id !== target.id);
                         this.addEffect(target.x, target.y);
@@ -236,8 +289,11 @@ export class Game {
             return effect.age < effect.maxAge;
         });
 
-        // 检查波次是否完成
-        if (this.waveSystem.isWaveComplete()) {
+        // 检查波次是否完成（仅在波次开始后检查）
+        if (this.state.wave > 0 && this.waveSystem.isWaveComplete()) {
+            // 执行波次结算（清除部分防御塔）
+            this.processWaveSettlement();
+
             // 检查是否通关（经典模式）
             if (this.waveSystem.isClassicComplete()) {
                 this.gameOver(true);
@@ -245,18 +301,25 @@ export class Game {
             }
 
             // 显示波次完成提示并开始下一波（只触发一次）
-            if (!this.waveCompleteTimer && this.state.wave > 0) {
+            if (!this.waveCompleteTimer) {
                 const modeDisplay = document.getElementById('mode-display');
                 if (modeDisplay) {
-                    modeDisplay.textContent = `✅ 第${this.state.wave}波完成！准备下一波...`;
+                    modeDisplay.textContent = `✅ 第${this.state.wave}波完成！`;
                     modeDisplay.style.color = '#4aff4a';
                 }
 
-                // 延迟后开始下一波
+                // 延迟后进入下一波准备阶段
                 const delay = CONFIG.WAVE_MECHANICS.waveCompleteDelay;
                 this.waveCompleteTimer = setTimeout(() => {
                     this.waveCompleteTimer = null;
-                    this.startNextWave();
+                    // 进入准备阶段（倒计时）
+                    this.preparationActive = true;
+                    this.gameStartTime = performance.now();
+                    // 显示准备倒计时
+                    const countdown = document.getElementById('countdown');
+                    if (countdown) countdown.classList.remove('hidden');
+                    // 延迟后开始下一波
+                    setTimeout(() => this.startNextWave(), CONFIG.WAVE_MECHANICS.wavePreparationTime);
                 }, delay);
             }
         }
@@ -289,6 +352,43 @@ export class Game {
         });
     }
 
+    // 更新 Combo 系统
+    updateCombo() {
+        const now = performance.now();
+        const comboWindow = CONFIG.COMBO.windowMs;
+
+        // 检查是否在 Combo 时间窗口内
+        if (now - this.combo.lastKillTime <= comboWindow) {
+            // 在窗口内，增加 Combo 数
+            this.combo.count++;
+        } else {
+            // 超出窗口，重置 Combo
+            this.combo.count = 1;
+        }
+
+        // 更新最后击杀时间
+        this.combo.lastKillTime = now;
+
+        // 计算当前倍率
+        this.combo.multiplier = this.calculateComboMultiplier();
+    }
+
+    // 计算 Combo 倍率
+    calculateComboMultiplier() {
+        const steps = CONFIG.COMBO.multiplierSteps;
+        let multiplier = 1;
+
+        for (const step of steps) {
+            if (this.combo.count >= step.kills) {
+                multiplier = step.mult;
+            } else {
+                break;
+            }
+        }
+
+        return Math.min(multiplier, CONFIG.COMBO.maxMultiplier);
+    }
+
     // 更新HUD
     updateHUD() {
         document.getElementById('wave').textContent = this.state.wave;
@@ -296,6 +396,45 @@ export class Game {
         document.getElementById('gold').textContent = this.state.gold;
         document.getElementById('kills').textContent = this.state.kills;
         document.getElementById('level').textContent = this.state.level;
+
+        // 更新 Combo 显示
+        const comboEl = document.getElementById('combo-display');
+        if (comboEl) {
+            if (this.combo.count >= 2) {
+                comboEl.textContent = `Combo x${this.combo.count}! 💥`;
+                comboEl.style.display = 'inline';
+                // 根据倍率显示不同颜色
+                if (this.combo.multiplier >= 3) {
+                    comboEl.style.color = '#ff4a4a'; // 红色 - 最高倍率
+                } else if (this.combo.multiplier >= 2) {
+                    comboEl.style.color = '#ffaa00'; // 橙色
+                } else {
+                    comboEl.style.color = '#4aff4a'; // 绿色
+                }
+            } else {
+                comboEl.style.display = 'none';
+            }
+        }
+
+        // 实时更新所有升级按钮状态
+        this.updateUpgradeButtons();
+    }
+
+    // 更新防御塔面板（锁定状态）
+    updateTowerPanel() {
+        const towerTypes = document.querySelectorAll('.tower-type');
+        towerTypes.forEach(element => {
+            const type = element.dataset.type;
+            const config = CONFIG.TOWERS[type];
+            if (config) {
+                const unlockWave = config.unlockWave || 0;
+                if (this.state.wave < unlockWave) {
+                    element.classList.add('locked');
+                } else {
+                    element.classList.remove('locked');
+                }
+            }
+        });
     }
 
     // 更新倒计时
@@ -303,7 +442,11 @@ export class Game {
         if (!this.preparationActive) return;
 
         const elapsed = performance.now() - this.gameStartTime;
-        const remaining = Math.max(0, Math.ceil((CONFIG.PREPARATION_TIME - elapsed) / 1000));
+        // 根据是否首波使用不同的准备时间
+        const prepTime = this.state.wave === 0
+            ? CONFIG.WAVE_MECHANICS.firstWavePreparationTime
+            : CONFIG.WAVE_MECHANICS.wavePreparationTime;
+        const remaining = Math.max(0, Math.ceil((prepTime - elapsed) / 1000));
 
         const countdownTime = document.getElementById('countdown-time');
         if (countdownTime) {
@@ -317,15 +460,48 @@ export class Game {
         }
     }
 
-    // 升级防御塔
-    upgradeTower(tower) {
-        const result = UpgradeSystem.upgrade(tower, this.state.gold);
-        if (result) {
-            this.state.gold -= result.cost;
-            this.updateHUD();
-            return result;
+    // 升级塔类型（全局升级）
+    upgradeTowerType(type) {
+        const cost = Tower.getUpgradeCost(type);
+        if (cost === Infinity || this.state.gold < cost) {
+            return false;
         }
-        return null;
+
+        // 扣除金币
+        this.state.gold -= cost;
+
+        // 升级全局等级
+        Tower.upgradeType(type);
+
+        // 同步更新场上所有该类型的塔
+        Tower.updateAllTowersOfType(this.state.towers, type);
+
+        this.updateHUD();
+        return true;
+    }
+
+    // 实时更新所有升级按钮状态
+    updateUpgradeButtons() {
+        // 更新塔类型升级面板中的按钮
+        for (const type of Object.keys(CONFIG.TOWERS)) {
+            const btn = document.getElementById(`btn-upgrade-${type}`);
+            if (!btn) continue;
+
+            const cost = Tower.getUpgradeCost(type);
+            const isMaxLevel = Tower.isTypeMaxLevel(type);
+            const currentLevel = Tower.getGlobalLevel(type);
+            const towerName = CONFIG.TOWERS[type].name;
+
+            if (isMaxLevel) {
+                btn.textContent = `${towerName.slice(0, 2)}Lv.MAX`;
+                btn.disabled = true;
+                btn.classList.add('max-level');
+            } else {
+                btn.textContent = `${towerName.slice(0, 2)}Lv.${currentLevel}→${cost}`;
+                btn.disabled = this.state.gold < cost;
+                btn.classList.toggle('max-level', false);
+            }
+        }
     }
 
     // 游戏结束
@@ -335,6 +511,7 @@ export class Game {
         document.getElementById('tower-panel').classList.add('hidden');
         document.getElementById('upgrade-panel').classList.add('hidden');
         document.getElementById('gameover').classList.remove('hidden');
+        document.getElementById('pause-menu').classList.add('hidden');
 
         // 显示统计
         document.getElementById('final-level').textContent = this.state.level;
@@ -373,21 +550,25 @@ export class Game {
         this.showMenu();
     }
 
-    // 切换游戏速度
+    // 切换游戏速度（只控制倍速）
     toggleSpeed() {
         this.speedIndex = (this.speedIndex + 1) % this.speedOptions.length;
         this.gameSpeed = this.speedOptions[this.speedIndex];
 
-        // 根据速度设置游戏状态
-        if (this.gameSpeed === 0) {
-            this.state.phase = 'paused';
-        } else if (this.state.phase === 'paused') {
+        // 更新UI
+        this.updateSpeedButton();
+    }
+
+    // 切换暂停状态
+    togglePause() {
+        if (this.state.phase === 'paused') {
             this.state.phase = 'playing';
+        } else if (this.state.phase === 'playing') {
+            this.state.phase = 'paused';
         }
 
         // 更新UI
-        this.updateSpeedButton();
-        this.updateHUD();
+        this.updatePauseMenu();
     }
 
     // 更新速度按钮显示
@@ -395,17 +576,79 @@ export class Game {
         const btn = document.getElementById('btn-speed');
         if (!btn) return;
 
-        const labels = ['▶', '1x', '2x'];
+        const labels = ['1x', '2x'];
         btn.textContent = labels[this.speedIndex];
+    }
 
-        // 更新暂停遮罩
-        const overlay = document.getElementById('pause-overlay');
-        if (overlay) {
-            if (this.gameSpeed === 0) {
-                overlay.classList.remove('hidden');
-            } else {
-                overlay.classList.add('hidden');
-            }
+    // 更新暂停菜单显示
+    updatePauseMenu() {
+        const menu = document.getElementById('pause-menu');
+        if (!menu) return;
+
+        if (this.state.phase === 'paused') {
+            menu.classList.remove('hidden');
+        } else {
+            menu.classList.add('hidden');
+        }
+    }
+
+    // 波次结算：随机清除约50%的防御塔
+    processWaveSettlement() {
+        const towers = this.state.towers;
+        if (towers.length === 0) return;
+
+        // 计算需要清除的数量（50%，四舍五入）
+        const clearCount = Math.round(towers.length * CONFIG.WAVE_SETTLEMENT.clearRatio);
+        if (clearCount === 0) return;
+
+        // 随机打乱并选择要清除的塔
+        const shuffled = [...towers].sort(() => Math.random() - 0.5);
+        const toClear = shuffled.slice(0, clearCount);
+
+        // 计算返还金币（50%，使用累计投入成本）
+        let refund = 0;
+        const clearedIds = new Set();
+        toClear.forEach(tower => {
+            refund += Math.floor(tower.totalInvested * CONFIG.WAVE_SETTLEMENT.refundRatio);
+            clearedIds.add(tower.id);
+        });
+
+        // 移除被清除的防御塔
+        this.state.towers = towers.filter(t => !clearedIds.has(t.id));
+
+        // 返还金币
+        this.state.gold += refund;
+
+        // 显示结算消息
+        this.showSettlementMessage(clearCount, refund);
+
+        // 更新 HUD
+        this.updateHUD();
+
+        // 只在实际清除了塔时���藏升级面板
+        if (clearCount > 0) {
+            document.getElementById('upgrade-panel').classList.add('hidden');
+        }
+    }
+
+    // 显示结算消息
+    showSettlementMessage(count, refund) {
+        const modeDisplay = document.getElementById('mode-display');
+        if (modeDisplay) {
+            const originalText = modeDisplay.textContent;
+            modeDisplay.textContent = `🏰 撤退 ${count} 座防御塔，返还 ${refund} 金币`;
+            modeDisplay.style.color = '#ffaa00';
+
+            // 3秒后恢复原文本
+            setTimeout(() => {
+                if (this.state.mode === 'classic') {
+                    const totalWaves = CONFIG.WAVES.classic.totalWaves;
+                    modeDisplay.textContent = `第${this.state.wave}/${totalWaves}波`;
+                } else {
+                    modeDisplay.textContent = `无尽模式 - 第${this.state.wave}波`;
+                }
+                modeDisplay.style.color = '';
+            }, 3000);
         }
     }
 }

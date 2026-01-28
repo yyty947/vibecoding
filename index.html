@@ -32,47 +32,84 @@
             <span id="countdown" class="countdown hidden">⚠️ 敌军来袭: <span id="countdown-time">8</span>秒</span>
         </div>
         <div class="hud-right">
+            <span id="combo-display" class="combo-display hidden">Combo x3! 💥</span>
+            <span id="btn-pause" class="pause-btn">⏸</span>
             <span id="btn-speed" class="speed-btn">1x</span>
             <span class="hud-item">💀 击杀: <span id="kills">0</span></span>
             <span class="hud-item">⭐ 等级: <span id="level">1</span></span>
         </div>
     </div>
 
-    <!-- 暂停遮罩 -->
-    <div id="pause-overlay" class="pause-overlay hidden">
-        <div class="pause-text">⏸️ 游戏已暂停</div>
-        <button id="btn-resume" class="btn-resume">▶️ 继续游戏</button>
+    <!-- 暂停菜单 -->
+    <div id="pause-menu" class="pause-menu hidden">
+        <div class="pause-content">
+            <h2>⏸️ 游戏暂停</h2>
+            <div class="pause-buttons">
+                <button id="btn-resume" class="btn-primary">▶️ 继续游戏</button>
+                <button id="btn-restart-pause" class="btn-secondary">🔄 重新开始</button>
+                <button id="btn-menu-pause" class="btn-secondary">🏠 返回主菜单</button>
+            </div>
+        </div>
     </div>
 
     <!-- 塔选择面板 -->
     <div id="tower-panel" class="tower-panel hidden">
-        <div class="tower-type" data-type="machinegun">
+        <div class="tower-type" data-type="machinegun" data-unlock="0">
             <div class="tower-icon">🔫</div>
             <div class="tower-name">机枪塔</div>
             <div class="tower-cost">💰 50</div>
         </div>
-        <div class="tower-type" data-type="cannon">
+        <div class="tower-type" data-type="cannon" data-unlock="0">
             <div class="tower-icon">💥</div>
             <div class="tower-name">加农炮</div>
             <div class="tower-cost">💰 100</div>
         </div>
-        <div class="tower-type" data-type="rifle">
+        <div class="tower-type" data-type="rifle" data-unlock="3">
             <div class="tower-icon">🎯</div>
             <div class="tower-name">狙击塔</div>
             <div class="tower-cost">💰 75</div>
+            <div class="tower-lock">🔒 第3波解锁</div>
+        </div>
+        <div class="tower-type" data-type="laser" data-unlock="5">
+            <div class="tower-icon">⚡</div>
+            <div class="tower-name">激光塔</div>
+            <div class="tower-cost">💰 125</div>
+            <div class="tower-lock">🔒 第5波解锁</div>
+        </div>
+        <div class="tower-type" data-type="em" data-unlock="7">
+            <div class="tower-icon">🌀</div>
+            <div class="tower-name">电磁塔</div>
+            <div class="tower-cost">💰 150</div>
+            <div class="tower-lock">🔒 第7波解锁</div>
+        </div>
+        <div class="tower-type" data-type="rocket" data-unlock="10">
+            <div class="tower-icon">🚀</div>
+            <div class="tower-name">火箭塔</div>
+            <div class="tower-cost">💰 200</div>
+            <div class="tower-lock">🔒 第10波解锁</div>
         </div>
     </div>
 
-    <!-- 升级面板 -->
+    <!-- 塔类型升级面板 -->
     <div id="upgrade-panel" class="upgrade-panel hidden">
-        <h3>🏰 防御塔</h3>
-        <div class="tower-info">
-            <span>⭐ 等级: <span id="tower-level">1</span></span>
-            <span>💥 伤害: <span id="tower-damage">10</span></span>
-            <span>📏 射程: <span id="tower-range">100</span></span>
+        <div class="upgrade-item">
+            <button id="btn-upgrade-machinegun" class="btn-upgrade-type">机枪塔 Lv.1 → 2 (50)</button>
         </div>
-        <button id="btn-upgrade" class="btn-upgrade">⬆️ 升级 (50)</button>
-        <button id="btn-close-upgrade" class="btn-secondary">❌ 关闭</button>
+        <div class="upgrade-item">
+            <button id="btn-upgrade-cannon" class="btn-upgrade-type">加农炮 Lv.1 → 2 (100)</button>
+        </div>
+        <div class="upgrade-item">
+            <button id="btn-upgrade-rifle" class="btn-upgrade-type">狙击塔 Lv.1 → 2 (75)</button>
+        </div>
+        <div class="upgrade-item">
+            <button id="btn-upgrade-laser" class="btn-upgrade-type">激光塔 Lv.1 → 2 (125)</button>
+        </div>
+        <div class="upgrade-item">
+            <button id="btn-upgrade-em" class="btn-upgrade-type">电磁塔 Lv.1 → 2 (150)</button>
+        </div>
+        <div class="upgrade-item">
+            <button id="btn-upgrade-rocket" class="btn-upgrade-type">火箭塔 Lv.1 → 2 (200)</button>
+        </div>
     </div>
 
     <!-- 结算界面 -->

@@ -67,10 +67,12 @@ export class WaveSystem {
             hpMult = CONFIG.WAVES.endless.baseHpMultiplier + (waveNumber - 1) * 0.1;
         }
 
-        // 随着波次增加，可能出现登陆艇
+        // 随着波次增加，解锁新敌人类型
         let types = ['soldier'];
         if (waveNumber >= 3) types.push('landing_craft');
-        if (waveNumber >= 7) types.push('landing_craft'); // 后期更多登陆艇
+        if (waveNumber >= 5) types.push('tank');           // 波次5解锁坦克
+        if (waveNumber >= 7) types.push('suicide');        // 波次7解锁自杀兵
+        if (waveNumber >= 9) types.push('landing_craft');  // 后期更多登陆艇
 
         return {
             waveNumber,

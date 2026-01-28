@@ -19,6 +19,12 @@ export class Enemy {
         this.color = config.color;
         this.size = config.size;
 
+        // 攻击建筑相关
+        this.attackDamage = config.attackDamage || 0;
+        this.attackRange = config.attackRange || 0;
+        this.attackCooldown = config.attackCooldown || 1000;
+        this.lastAttackTime = 0;
+
         // 移动方向：向下移动
         this.vx = 0;
         this.vy = this.speed;
@@ -28,6 +34,27 @@ export class Enemy {
     update() {
         this.x += this.vx;
         this.y += this.vy;
+    }
+
+    // 攻击建筑
+    canAttackTower(currentTime, towers) {
+        if (this.attackDamage <= 0) return false;
+        if (currentTime - this.lastAttackTime < this.attackCooldown) return false;
+
+        // 查找范围内的建筑
+        for (const tower of towers) {
+            const dist = Helpers.distance(this.x, this.y, tower.x, tower.y);
+            if (dist <= this.attackRange) {
+                return tower;
+            }
+        }
+        return null;
+    }
+
+    // 执行攻击
+    attackTower(tower, currentTime) {
+        this.lastAttackTime = currentTime;
+        tower.takeDamage(this.attackDamage);
     }
 
     // 受到伤害
