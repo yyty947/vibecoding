@@ -30,13 +30,26 @@ export class Enemy {
         this.vy = this.speed;
     }
 
-    // 更新位置
-    update() {
-        this.x += this.vx;
-        this.y += this.vy;
+    // 更新位置（使用 deltaTime 实现平滑移动，支持游戏速度调整）
+    // deltaTime: 距离上一帧的时间差（毫秒）
+    update(deltaTime) {
+        // 如果被眩晕，不移动
+        if (this.stunned) {
+            return;
+        }
+        
+        // 将速度从"每帧"转换为"每毫秒"，再乘以 deltaTime
+        // 假设 60fps，每帧约 16.67ms
+        const timeScale = deltaTime / 16.67;
+        
+        // 应用减速效果（如果有）
+        const speedMultiplier = this.speedMultiplier || 1;
+        
+        this.x += this.vx * timeScale * speedMultiplier;
+        this.y += this.vy * timeScale * speedMultiplier;
     }
 
-    // 攻击建筑
+    // 攻击建筑（基于真实时间）
     canAttackTower(currentTime, towers) {
         if (this.attackDamage <= 0) return false;
         if (currentTime - this.lastAttackTime < this.attackCooldown) return false;
@@ -51,9 +64,40 @@ export class Enemy {
         return null;
     }
 
-    // 执行攻击
+    // 攻击建筑（基于 deltaTime，支持游戏速度调整）
+    canAttackTowerWithDeltaTime(deltaTime, towers) {
+        if (this.attackDamage <= 0) return false;
+        
+        // 累积经过的时间
+        if (!this._attackCooldownAccumulated) {
+            this._attackCooldownAccumulated = 0;
+        }
+        this._attackCooldownAccumulated += deltaTime;
+        
+        if (this._attackCooldownAccumulated < this.attackCooldown) {
+            return null;
+        }
+
+        // 查找范围内的建筑
+        for (const tower of towers) {
+            const dist = Helpers.distance(this.x, this.y, tower.x, tower.y);
+            if (dist <= this.attackRange) {
+                return tower;
+            }
+        }
+        return null;
+    }
+
+    // 执行攻击（基于真实时间）
     attackTower(tower, currentTime) {
         this.lastAttackTime = currentTime;
+        tower.takeDamage(this.attackDamage);
+    }
+
+    // 执行攻击（基于 deltaTime）
+    attackTowerWithDeltaTime(tower) {
+        // 重置累积的冷却时间
+        this._attackCooldownAccumulated = 0;
         tower.takeDamage(this.attackDamage);
     }
 

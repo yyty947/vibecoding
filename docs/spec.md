@@ -115,59 +115,99 @@ const GameState = {
 
 ```javascript
 export const CONFIG = {
-    // 画布尺寸
-    CANVAS_WIDTH: 800,
-    CANVAS_HEIGHT: 600,
+    // 画布尺寸 - 动态获取窗口大小
+    get CANVAS_WIDTH() { return window.innerWidth || 1200; },
+    get CANVAS_HEIGHT() { return window.innerHeight || 800; },
 
-    // 网格配置
-    GRID_SIZE: 40,
+    // 游戏平衡参数
+    INITIAL_LIVES: 10,
+    INITIAL_GOLD: 350,  // 初始金币
+    INITIAL_LEVEL: 1,
 
-    // 防御塔类型
+    // 游戏节奏配置
+    PREPARATION_TIME: 10000, // 首波发育时间10秒，后续3秒
+
+    // 防御塔类型 - 6种塔渐进解锁
     TOWERS: {
-        BASIC: {
-            name: '机枪塔',
-            cost: 50,
-            range: 120,
-            damage: 10,
-            fireRate: 500,  // 毫秒
-            color: '#4CAF50'
-        },
-        SNIPER: {
-            name: '狙击塔',
-            cost: 100,
-            range: 250,
-            damage: 50,
-            fireRate: 2000,
-            color: '#2196F3'
-        }
+        machinegun: { name: '机枪塔', cost: 50, damage: 10, range: 120, fireRate: 200, unlockWave: 0 },
+        cannon: { name: '加农炮', cost: 100, damage: 30, range: 80, fireRate: 1000, unlockWave: 0 },
+        rifle: { name: '狙击塔', cost: 75, damage: 50, range: 200, fireRate: 1500, unlockWave: 2 },
+        laser: { name: '激光塔', cost: 125, damage: 8, range: 150, fireRate: 150, unlockWave: 5 },
+        em: { name: '电磁塔', cost: 150, damage: 25, range: 100, fireRate: 800, unlockWave: 7 },
+        rocket: { name: '火箭塔', cost: 200, damage: 120, range: 180, fireRate: 1500, unlockWave: 10 }
     },
 
-    // 敌人类型
+    // 敌人类型 - 4种敌人随波次解锁
     ENEMIES: {
-        SOLDIER: {
-            name: '士兵',
-            health: 50,
-            speed: 1,
-            reward: 10,
-            color: '#FF5722'
-        },
-        BOAT: {
-            name: '登陆艇',
-            health: 200,
-            speed: 0.5,
-            reward: 50,
-            color: '#795548'
-        }
+        soldier: { hp: 30, speed: 1, reward: 18, damage: 1 },
+        landing_craft: { hp: 100, speed: 0.5, reward: 45, damage: 5 },
+        tank: { hp: 240, speed: 0.3, reward: 60, damage: 10 },
+        suicide: { hp: 20, speed: 2, reward: 22, damage: 1 }
     },
 
     // 波次配置
-    WAVES: [
-        { count: 5, type: 'SOLDIER', interval: 2000 },
-        { count: 10, type: 'SOLDIER', interval: 1800 },
-        { count: 5, type: 'SOLDIER', then: 3, type: 'BOAT', interval: 2500 },
-        { count: 15, type: 'SOLDIER', interval: 1500 },
-        { count: 10, type: 'SOLDIER', then: 5, type: 'BOAT', interval: 2000 }
-    ]
+    WAVES: {
+        classic: { totalWaves: 10, baseEnemyCount: 40, baseHpMultiplier: 1.0 },
+        endless: { baseEnemyCount: 40, baseHpMultiplier: 1.0, waveIncrement: 0.12 }
+    },
+
+    // 波次机制配置
+    WAVE_MECHANICS: {
+        firstWavePreparationTime: 10000,  // 首波10秒准备
+        wavePreparationTime: 3000,        // 后续波次3秒准备
+        waveCompleteDelay: 2000,          // 波次完成后等待2秒
+        baseSpawnInterval: 1200,          // 初始生成间隔
+        minSpawnInterval: 300,            // 最小生成间隔
+        intervalDecay: 0.7,               // 间隔衰减系数
+        enemyCountPerWave: 5,             // 每波增加敌人数量
+        intervalDecreasePerWave: 60       // 每波间隔减少量
+    },
+
+    // 波次结算配置 - 清除比例随波次变化，返还比例随波次衰减
+    WAVE_SETTLEMENT: {
+        // 清除比例：前期35%，中期38%，后期45%，大后期50%
+        getClearRatio: function(wave) {
+            if (wave <= 3) return 0.35;
+            if (wave <= 6) return 0.38;
+            if (wave <= 9) return 0.45;
+            return 0.50;
+        },
+        // 返还比例随波次衰减（方案A）：前期容错，后期紧张
+        // 前期(1-3波): 40% - 新手保护期，允许试错
+        // 中期(4-7波): 25% - 常规期，需要谨慎决策  
+        // 后期(8波+): 10% - 紧张期，清除是重大战略决策
+        getRefundRatio: function(wave) {
+            if (wave <= 3) return 0.40;
+            if (wave <= 7) return 0.25;
+            return 0.10;
+        }
+    },
+
+    // 升级配置 - 最高5级，全局升级
+    MAX_TOWER_LEVEL: 5,
+    UPGRADE_COST_MULTIPLIER: 1.5,
+
+    // 连击（Combo）系统配置 - 极限紧缩
+    COMBO: {
+        windowMs: 1500,             // 时间窗口1.5秒
+        maxMultiplier: 2,           // 最高倍率2x
+        multiplierSteps: [
+            { kills: 3, mult: 1.3 },
+            { kills: 5, mult: 1.6 },
+            { kills: 8, mult: 2.0 }
+        ]
+    },
+
+    // 经济系统辅助方法
+    // 获取敌人实际奖励（极限紧缩：更陡峭的衰减）
+    getEnemyReward: function(enemyType, wave) {
+        const baseReward = this.ENEMIES[enemyType].reward;
+        if (wave <= 2) return baseReward;                    // 100%
+        if (wave <= 3) return Math.floor(baseReward * 0.7);  // 70%
+        if (wave <= 6) return Math.floor(baseReward * 0.4);  // 40%
+        if (wave <= 9) return Math.floor(baseReward * 0.25); // 25%
+        return Math.floor(baseReward * 0.2);                  // 20%
+    }
 }
 ```
 
@@ -309,19 +349,29 @@ export const CONFIG = {
 
 ```
 project/
-├── index.html
+├── index.html              # 主页面
+├── start.bat               # Windows 启动脚本
+├── start.sh                # Linux/Mac 启动脚本
 ├── src/
-│   ├── main.js           # 入口文件
-│   ├── Game.js           # 游戏主控制器
-│   ├── Renderer.js       # 渲染器
-│   ├── Input.js          # 输入处理
-│   ├── Collision.js      # 碰撞检测
-│   ├── WaveManager.js    # 波次管理
-│   ├── config.js         # 配置文件
-│   └── entities/
-│       ├── Tower.js      # 防御塔类
-│       ├── Enemy.js      # 敌人类
-│       └── Bullet.js     # 子弹类
+│   ├── main.js             # 入口文件
+│   ├── styles.css          # 样式文件
+│   ├── core/
+│   │   ├── Game.js         # 游戏主控制器
+│   │   ├── Renderer.js     # 渲染器
+│   │   └── Input.js        # 输入处理
+│   ├── entities/
+│   │   ├── Tower.js        # 防御塔类
+│   │   ├── Enemy.js        # 敌人类
+│   │   └── Projectile.js   # 子弹类
+│   ├── systems/
+│   │   ├── WaveSystem.js       # 波次系统
+│   │   ├── CollisionSystem.js  # 碰撞检测
+│   │   ├── UpgradeSystem.js    # 升级系统
+│   │   ├── DamageSystem.js     # 伤害计算（新增）
+│   │   └── EffectManager.js    # 效果管理（新增）
+│   └── utils/
+│       ├── config.js       # 配置文件
+│       └── helpers.js      # 工具函数
 ├── docs/
 │   ├── PRD.md
 │   └── spec.md

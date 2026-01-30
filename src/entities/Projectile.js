@@ -13,7 +13,8 @@ export class Projectile {
     }
 
     // 更新位置（向目标移动）
-    update() {
+    // deltaTime: 距离上一帧的时间差（毫秒），用于支持游戏速度调整
+    update(deltaTime) {
         if (!this.target || !this.target.isAlive()) {
             return false; // 目标不存在，返回 false 表示应该移除
         }
@@ -22,7 +23,12 @@ export class Projectile {
         const dy = this.target.y - this.y;
         const dist = Math.hypot(dx, dy);
 
-        if (dist < this.speed) {
+        // 将速度从"每帧"转换为"每毫秒"，再乘以 deltaTime
+        // 假设 60fps，每帧约 16.67ms
+        const timeScale = deltaTime / 16.67;
+        const moveDistance = this.speed * timeScale;
+
+        if (dist < moveDistance) {
             // 命中目标
             this.x = this.target.x;
             this.y = this.target.y;
@@ -30,8 +36,8 @@ export class Projectile {
         }
 
         // 移动向目标
-        this.x += (dx / dist) * this.speed;
-        this.y += (dy / dist) * this.speed;
+        this.x += (dx / dist) * moveDistance;
+        this.y += (dy / dist) * moveDistance;
         return true;
     }
 

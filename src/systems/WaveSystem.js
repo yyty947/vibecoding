@@ -67,12 +67,17 @@ export class WaveSystem {
             hpMult = CONFIG.WAVES.endless.baseHpMultiplier + (waveNumber - 1) * 0.1;
         }
 
-        // 随着波次增加，解锁新敌人类型
-        let types = ['soldier'];
-        if (waveNumber >= 3) types.push('landing_craft');
-        if (waveNumber >= 5) types.push('tank');           // 波次5解锁坦克
-        if (waveNumber >= 7) types.push('suicide');        // 波次7解锁自杀兵
-        if (waveNumber >= 9) types.push('landing_craft');  // 后期更多登陆艇
+        // 根据 unlockWave 配置自动解锁敌人类型（配置驱动，避免硬编码）
+        let types = [];
+        for (const [type, config] of Object.entries(CONFIG.ENEMIES)) {
+            if (config.unlockWave && waveNumber >= config.unlockWave) {
+                types.push(type);
+            }
+        }
+        // 确保至少有一种敌人类型
+        if (types.length === 0) {
+            types = ['soldier'];
+        }
 
         return {
             waveNumber,

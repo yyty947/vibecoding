@@ -15,6 +15,91 @@
             <button id="btn-classic" class="btn-primary">🎯 经典模式</button>
             <button id="btn-endless" class="btn-primary">♾️ 无尽模式</button>
         </div>
+        <div class="menu-footer">
+            <button id="btn-tutorial" class="btn-text">📖 游戏指南</button>
+        </div>
+    </div>
+
+    <!-- 新手教学页 -->
+    <div id="tutorial" class="tutorial hidden">
+        <h1>📖 游戏指南</h1>
+        <div class="tutorial-content">
+            
+            <div class="tutorial-section">
+                <h3>🎯 游戏目标</h3>
+                <p>在敌军突破你的防线之前消灭它们！</p>
+                <ul>
+                    <li>❤️ 生命值归零 = 游戏失败</li>
+                    <li>🏆 经典模式存活10波 = 胜利</li>
+                    <li>♾️ 无尽模式尽可能活得久</li>
+                </ul>
+            </div>
+
+            <div class="tutorial-section">
+                <h3>🔄 基本流程</h3>
+                <div class="flow-steps">
+                    <div class="step">
+                        <span class="step-icon">⏱️</span>
+                        <span class="step-text">准备期<br><small>布置防御塔</small></span>
+                    </div>
+                    <span class="step-arrow">→</span>
+                    <div class="step">
+                        <span class="step-icon">⚔️</span>
+                        <span class="step-text">开战<br><small>自动攻击</small></span>
+                    </div>
+                    <span class="step-arrow">→</span>
+                    <div class="step">
+                        <span class="step-icon">💰</span>
+                        <span class="step-text">结算<br><small>部分塔会撤退</small></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tutorial-section">
+                <h3>🏗️ 防御塔策略</h3>
+                <p>不同塔有不同专长，合理搭配是关键：</p>
+                <ul>
+                    <li>🔫 <strong>机枪塔</strong> - 射速快，适合清杂兵</li>
+                    <li>💥 <strong>加农炮</strong> - 破甲+溅射，对付重甲集群</li>
+                    <li>🎯 <strong>狙击塔</strong> - 超远射程，点杀高威胁目标</li>
+                    <li>⚡ <strong>激光塔</strong> - 减速效果，拦截快速单位</li>
+                    <li>🌀 <strong>电磁塔</strong> - 眩晕控制，创造集火窗口</li>
+                </ul>
+                <p class="tip">💡 <strong>升级 vs 数量</strong>：全局升级影响所有同类型塔，但成本递增；多摆塔覆盖面广，但有维护费压力。</p>
+            </div>
+
+            <div class="tutorial-section">
+                <h3>👹 敌军威胁</h3>
+                <p>敌军会一波比一波强，而且它们会反击！</p>
+                <ul>
+                    <li>🎖️ 越往后敌人血量越高、数量越多</li>
+                    <li>⚠️ 部分敌人会攻击并摧毁你的防御塔</li>
+                    <li>🛡️ 重甲敌人需要破甲塔才能有效伤害</li>
+                    <li>💨 快速单位需要减速或高射速塔拦截</li>
+                </ul>
+            </div>
+
+            <div class="tutorial-section">
+                <h3>💰 经济取舍</h3>
+                <p>金币永远不够用，学会取舍：</p>
+                <ul>
+                    <li>✅ 击杀敌人获得金币</li>
+                    <li>✅ 每波结算时部分塔会返还金币</li>
+                    <li>⚠️ 每波开始要支付塔的维护费（等级越高越贵）</li>
+                    <li>⚠️ 后期击杀收益递减，前期布局很重要</li>
+                </ul>
+                <p class="tip">💡 <strong>核心策略</strong>：前期省钱布局，中期针对性升级，后期靠已有防线硬抗。</p>
+            </div>
+
+        </div>
+
+        <div class="tutorial-footer">
+            <label class="checkbox-label">
+                <input type="checkbox" id="skip-tutorial-checkbox">
+                <span>不再显示此教程</span>
+            </label>
+            <button id="btn-start-game" class="btn-primary">🎮 开始游戏</button>
+        </div>
     </div>
 
     <!-- 游戏画布 -->
@@ -48,6 +133,7 @@
                 <button id="btn-resume" class="btn-primary">▶️ 继续游戏</button>
                 <button id="btn-restart-pause" class="btn-secondary">🔄 重新开始</button>
                 <button id="btn-menu-pause" class="btn-secondary">🏠 返回主菜单</button>
+                <button id="btn-sound-toggle" class="btn-secondary">🔊 音效: 开</button>
             </div>
         </div>
     </div>

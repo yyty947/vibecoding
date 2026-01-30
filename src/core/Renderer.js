@@ -125,6 +125,35 @@ export class Renderer {
             this.ctx.shadowBlur = 3;
             this.ctx.fillText(tower.level, tower.x, tower.y);
             this.ctx.shadowBlur = 0;
+
+            // 电磁塔计数显示（可预期眩晕的视觉反馈）
+            if (tower.type === 'em') {
+                const counter = tower.getAttackCounter();
+                const interval = tower.getStunInterval();
+                const isReady = counter >= interval - 1; // 下一发就是眩晕
+
+                // 在塔下方绘制计数圆点
+                const dotRadius = 3;
+                const dotSpacing = 8;
+                const startX = tower.x - (interval - 1) * dotSpacing / 2;
+                const dotY = tower.y + baseSize + 8;
+
+                for (let i = 0; i < interval; i++) {
+                    this.ctx.beginPath();
+                    this.ctx.arc(startX + i * dotSpacing, dotY, dotRadius, 0, Math.PI * 2);
+                    if (i < counter) {
+                        // 已填充的点（蓝色）
+                        this.ctx.fillStyle = '#44ffff';
+                    } else if (i === counter && isReady) {
+                        // 下一发眩晕（闪烁金色）
+                        this.ctx.fillStyle = `rgba(255, 215, 0, ${0.5 + Math.sin(Date.now() / 100) * 0.5})`;
+                    } else {
+                        // 未填充的点（灰色）
+                        this.ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
+                    }
+                    this.ctx.fill();
+                }
+            }
         });
     }
 
